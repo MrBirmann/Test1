@@ -1,0 +1,507 @@
+<html><head><base href="https://websim.ai/c/qr-race-results">
+<title>QR Race Results - Classement par QR Code</title>
+<meta name="description" content="Système de classement de course en temps réel utilisant des dossards QR code avec export PDF, CSV, nommage et gestion de multiples courses">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body {
+    font-family: 'Roboto', Arial, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 20px;
+    background-color: #f0f4f8;
+    background-image: linear-gradient(to bottom right, #f0f4f8 0%, #d9e2ec 100%);
+  }
+  h1, h2 {
+    color: #2c3e50;
+    text-align: center;
+    margin-bottom: 30px;
+  }
+  .scanner-container, .race-setup {
+    background-color: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  #race-timer {
+    font-size: 36px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: #3498db;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+  }
+  #qr-video {
+    width: 100%;
+    max-width: 400px;
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  }
+  .button {
+    background-image: linear-gradient(to right, #3498db, #2980b9);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 30px;
+    margin-top: 15px;
+    margin-right: 10px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+  .button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+  }
+  #new-race-btn {
+    background-image: linear-gradient(to right, #2ecc71, #27ae60);
+  }
+  #export-pdf-btn {
+    background-image: linear-gradient(to right, #e67e22, #d35400);
+  }
+  #export-csv-btn {
+    background-image: linear-gradient(to right, #16a085, #138d75);
+  }
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 10px;
+    margin-top: 30px;
+    background-color: transparent;
+  }
+  th, td {
+    padding: 15px;
+    text-align: left;
+    background-color: white;
+  }
+  th {
+    background-image: linear-gradient(to right, #3498db, #2980b9);
+    color: white;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+  tr:nth-child(even) td {
+    background-color: #f9f9f9;
+  }
+  td:first-child, th:first-child {
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+  }
+  td:last-child, th:last-child {
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+  }
+  .medal {
+    font-size: 24px;
+    margin-right: 10px;
+  }
+  .delete-btn {
+    background-image: linear-gradient(to right, #e74c3c, #c0392b);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    cursor: pointer;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+  }
+  .delete-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+  #status-message {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    padding: 15px 30px;
+    border-radius: 30px;
+    font-size: 18px;
+    font-weight: bold;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: opacity 0.3s ease-in-out;
+  }
+  .success {
+    background-color: #2ecc71;
+    color: white;
+  }
+  .error {
+    background-color: #e74c3c;
+    color: white;
+  }
+  #race-name-input {
+    padding: 12px;
+    font-size: 16px;
+    border: 2px solid #3498db;
+    border-radius: 30px;
+    margin-right: 10px;
+    width: 60%;
+    max-width: 300px;
+  }
+  .manual-input {
+    margin-top: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+  }
+  .manual-input input {
+    padding: 12px;
+    font-size: 16px;
+    border: 2px solid #3498db;
+    border-radius: 30px;
+  }
+  #manual-add-btn {
+    background-image: linear-gradient(to right, #9b59b6, #8e44ad);
+  }
+  @keyframes pulse {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  #scan-button.scanning {
+    animation: pulse 2s infinite;
+    background-image: linear-gradient(to right, #e74c3c, #c0392b);
+  }
+  #current-race-name {
+    font-size: 24px;
+    color: #3498db;
+    margin-bottom: 20px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+  }
+  @media (max-width: 768px) {
+    body {
+      padding: 20px 10px;
+    }
+    
+    .button {
+      padding: 15px 30px;
+      font-size: 18px;
+      margin-top: 20px;
+      margin-right: 0;
+      display: block;
+      width: 100%;
+    }
+    
+    #race-name-input {
+      width: 100%;
+      max-width: none;
+      margin-right: 0;
+      margin-bottom: 15px;
+    }
+    
+    .manual-input {
+      flex-direction: column;
+    }
+    
+    .manual-input input {
+      width: 100%;
+      margin-bottom: 15px;
+    }
+    
+    #qr-video {
+      max-width: 100%;
+    }
+    
+    table {
+      font-size: 14px;
+    }
+    
+    th, td {
+      padding: 10px;
+    }
+  }
+</style>
+</head>
+<body>
+  <h1>QR Race Results</h1>
+  <p>Scannez les dossards QR code des coureurs pour créer un classement en temps réel.</p>
+  
+  <div class="race-setup">
+    <input type="text" id="race-name-input" placeholder="Nom de la course">
+    <button id="start-race-btn" class="button">Démarrer la course</button>
+  </div>
+
+  <div class="scanner-container" style="display:none;">
+    <h2 id="current-race-name"></h2>
+    <div id="race-timer">00:00:00</div>
+    <video id="qr-video"></video>
+    <br>
+    <button id="scan-button" class="button">Scanner un dossard</button>
+    <button id="new-race-btn" class="button">Nouvelle course</button>
+    <button id="export-pdf-btn" class="button">Exporter en PDF</button>
+    <button id="export-csv-btn" class="button">Exporter en CSV</button>
+    <div class="manual-input">
+      <input type="text" id="manual-number" placeholder="Numéro de dossard">
+      <input type="text" id="manual-name" placeholder="Nom du coureur (optionnel)">
+      <button id="manual-add-btn" class="button">Ajouter manuellement</button>
+    </div>
+  </div>
+  
+  <div id="status-message"></div>
+  
+  <h2>Classement</h2>
+  <table id="results-table">
+    <thead>
+      <tr>
+        <th>Position</th>
+        <th>Numéro de dossard</th>
+        <th>Temps d'arrivée</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Le classement sera rempli dynamiquement ici -->
+    </tbody>
+  </table>
+
+  <script src="https://unpkg.com/@zxing/library@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+  <script>
+    const codeReader = new ZXing.BrowserQRCodeReader();
+    let scanning = false;
+    const scanButton = document.getElementById('scan-button');
+    const newRaceButton = document.getElementById('new-race-btn');
+    const exportPdfButton = document.getElementById('export-pdf-btn');
+    const exportCsvButton = document.getElementById('export-csv-btn');
+    const startRaceButton = document.getElementById('start-race-btn');
+    const raceNameInput = document.getElementById('race-name-input');
+    const currentRaceName = document.getElementById('current-race-name');
+    const video = document.getElementById('qr-video');
+    const resultsTable = document.getElementById('results-table').getElementsByTagName('tbody')[0];
+    const statusMessage = document.getElementById('status-message');
+    const scannerContainer = document.querySelector('.scanner-container');
+    const raceSetup = document.querySelector('.race-setup');
+    const manualNumberInput = document.getElementById('manual-number');
+    const manualNameInput = document.getElementById('manual-name');
+    const manualAddButton = document.getElementById('manual-add-btn');
+    let startTime;
+    let timerInterval;
+    let runners = [];
+    let lastScans = {};
+    let raceName = '';
+
+    startRaceButton.addEventListener('click', startRace);
+    scanButton.addEventListener('click', () => {
+      if (scanning) {
+        stopScanning();
+      } else {
+        startScanning();
+      }
+    });
+
+    newRaceButton.addEventListener('click', prepareNewRace);
+    exportPdfButton.addEventListener('click', exportToPdf);
+    exportCsvButton.addEventListener('click', exportToCsv);
+    manualAddButton.addEventListener('click', handleManualEntry);
+
+    function startRace() {
+      raceName = raceNameInput.value.trim();
+      if (raceName === '') {
+        showStatus('Veuillez entrer un nom pour la course.', 'error');
+        return;
+      }
+      raceSetup.style.display = 'none';
+      scannerContainer.style.display = 'block';
+      currentRaceName.textContent = `Course en cours : ${raceName}`;
+      startTime = new Date();
+      updateTimer();
+      timerInterval = setInterval(updateTimer, 1000);
+      showStatus(`La course "${raceName}" a commencé !`, 'success');
+    }
+
+    function updateTimer() {
+      const now = new Date();
+      const diff = now - startTime;
+      const hours = Math.floor(diff / 3600000);
+      const minutes = Math.floor((diff % 3600000) / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      document.getElementById('race-timer').textContent = 
+        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    function startScanning() {
+      scanning = true;
+      scanButton.textContent = 'Arrêter le scan';
+      scanButton.classList.add('scanning');
+      
+      codeReader.decodeFromVideoDevice(null, 'qr-video', (result, err) => {
+        if (result) {
+          handleScan(result.text);
+        }
+        if (err && !(err instanceof ZXing.NotFoundException)) {
+          console.error(err);
+        }
+      });
+    }
+
+    function stopScanning() {
+      scanning = false;
+      scanButton.textContent = 'Scanner un dossard';
+      scanButton.classList.remove('scanning');
+      codeReader.reset();
+    }
+
+    function handleScan(qrData) {
+      const [number, name] = qrData.split('|');
+      const currentTime = new Date();
+      
+      if (lastScans[number] && (currentTime - lastScans[number]) < 30000) {
+        showStatus(`Scan ignoré pour le dossard ${number}. Attendez 30 secondes entre les scans.`, 'error');
+        return;
+      }
+      
+      lastScans[number] = currentTime;
+      const timeDiffMs = currentTime - startTime;
+      const minutes = Math.floor(timeDiffMs / 60000);
+      const seconds = Math.floor((timeDiffMs % 60000) / 1000);
+      
+      runners.push({number, name, minutes, seconds});
+      runners.sort((a, b) => (a.minutes * 60 + a.seconds) - (b.minutes * 60 + b.seconds));
+      updateResults();
+      showStatus(`Dossard ${number} scanné avec succès!`, 'success');
+    }
+
+    function handleManualEntry() {
+      const number = manualNumberInput.value.trim();
+      const name = manualNameInput.value.trim();
+      
+      if (!number) {
+        showStatus('Veuillez entrer un numéro de dossard.', 'error');
+        return;
+      }
+      
+      const currentTime = new Date();
+      
+      if (lastScans[number] && (currentTime - lastScans[number]) < 30000) {
+        showStatus(`Entrée ignorée pour le dossard ${number}. Attendez 30 secondes entre les entrées.`, 'error');
+        return;
+      }
+      
+      lastScans[number] = currentTime;
+      const timeDiffMs = currentTime - startTime;
+      const minutes = Math.floor(timeDiffMs / 60000);
+      const seconds = Math.floor((timeDiffMs % 60000) / 1000);
+      
+      runners.push({number, name, minutes, seconds});
+      runners.sort((a, b) => (a.minutes * 60 + a.seconds) - (b.minutes * 60 + b.seconds));
+      updateResults();
+      showStatus(`Dossard ${number} ajouté manuellement avec succès!`, 'success');
+      
+      manualNumberInput.value = '';
+      manualNameInput.value = '';
+    }
+
+    function updateResults() {
+      resultsTable.innerHTML = '';
+      runners.forEach((runner, index) => {
+        const row = resultsTable.insertRow();
+        const positionCell = row.insertCell(0);
+        const numberCell = row.insertCell(1);
+        const timeCell = row.insertCell(2);
+        const actionCell = row.insertCell(3);
+
+        positionCell.textContent = `${index + 1}`;
+        if (index < 3) {
+          const medals = ['🥇', '🥈', '🥉'];
+          positionCell.innerHTML = `<span class="medal">${medals[index]}</span>${index + 1}`;
+        }
+        numberCell.textContent = runner.name ? `${runner.number} - ${runner.name}` : runner.number;
+        timeCell.textContent = `${runner.minutes}m ${runner.seconds}s`;
+        
+        const deleteButton = document.createElement('button');
+        deleteButton.textContent = 'Supprimer';
+        deleteButton.className = 'delete-btn';
+        deleteButton.onclick = () => deleteRunner(index);
+        actionCell.appendChild(deleteButton);
+      });
+    }
+
+    function deleteRunner(index) {
+      const runner = runners[index];
+      runners.splice(index, 1);
+      delete lastScans[runner.number];
+      updateResults();
+      showStatus(`Dossard ${runner.number} supprimé du classement.`, 'success');
+    }
+
+    function showStatus(message, type) {
+      statusMessage.textContent = message;
+      statusMessage.className = type;
+      statusMessage.style.opacity = '1';
+      setTimeout(() => {
+        statusMessage.style.opacity = '0';
+      }, 3000);
+    }
+
+    function prepareNewRace() {
+      if (confirm('Êtes-vous sûr de vouloir commencer une nouvelle course ? Toutes les données actuelles seront effacées.')) {
+        clearInterval(timerInterval);
+        document.getElementById('race-timer').textContent = '00:00:00';
+        runners = [];
+        lastScans = {};
+        startTime = null;
+        raceName = '';
+        updateResults();
+        raceSetup.style.display = 'block';
+        scannerContainer.style.display = 'none';
+        raceNameInput.value = '';
+        showStatus('Prêt pour une nouvelle course !', 'success');
+      }
+    }
+
+    function exportToPdf() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.setFontSize(18);
+      doc.text(`Classement : ${raceName}`, 14, 22);
+
+      const tableColumn = ["Position", "Numéro/Nom", "Temps"];
+      const tableRows = runners.map((runner, index) => [
+        index + 1,
+        runner.name ? `${runner.number} - ${runner.name}` : runner.number,
+        `${runner.minutes}m ${runner.seconds}s`
+      ]);
+
+      doc.autoTable({
+        head: [tableColumn],
+        body: tableRows,
+        startY: 30,
+      });
+
+      doc.save(`classement_${raceName.replace(/\s+/g, '_')}.pdf`);
+      showStatus('Classement exporté en PDF !', 'success');
+    }
+
+    function exportToCsv() {
+      const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
+        + "Position,Numéro/Nom,Temps\n"
+        + runners.map((runner, index) => 
+            `${index + 1},${runner.name ? `${runner.number} - ${runner.name}` : runner.number},${runner.minutes}m ${runner.seconds}s`
+          ).join("\n");
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `classement_${raceName.replace(/\s+/g, '_')}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showStatus('Classement exporté en CSV !', 'success');
+    }
+  </script>
+</body></html>
